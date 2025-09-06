@@ -1,8 +1,9 @@
-python-dotenv
 beautifulsoup4
 requests
-fastapi
-httpx
 jsonschema
-uvicorn
+fastapi==0.115.0
+uvicorn[standard]==0.30.6
+httpx==0.27.2
+google-generativeai==0.8.3
+python-dotenv==1.0.1
 openai>=1.0.0
