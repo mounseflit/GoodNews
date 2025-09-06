@@ -14,6 +14,7 @@ app = FastAPI()
 
 # Ensure the key is present at startup
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+
 if not OPENAI_API_KEY:
     raise RuntimeError("OPENAI_API_KEY environment variable is not set.")
 
@@ -137,7 +138,7 @@ async def get_positive_news():
     tz = ZoneInfo("Africa/Casablanca")
     today_iso = datetime.datetime.now(tz).date().isoformat()
 
-    num = 5  # Number of articles to fetch
+    num =  os.getenv("NEWS_ARTICLES_NUM")
 
     prompt = f"""
 Find exactly {num} strictly positive news articles published today {today_iso} in Morocco, focusing only on clearly good news stories (such as successes in economy, culture, sports victories, innovation, sustainability, diplomacy, tourism, technology, healthcare improvements). Exclude any articles with negative content, such as crime, accidents, conflict, or disasters.
@@ -239,3 +240,4 @@ Important Reminders:
 @app.get("/api/health")
 async def health_check():
     return {"status": "ok"}
+
