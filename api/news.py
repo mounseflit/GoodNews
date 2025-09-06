@@ -2,15 +2,12 @@ import os
 import json
 import datetime as dt
 from zoneinfo import ZoneInfo
-
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse, RedirectResponse
 import httpx
 import google.generativeai as genai
 
-# =========================
-# App & Config
-# =========================
+
 app = FastAPI(title="Positive Morocco News API (Gemini Web Search)")
 
 CASABLANCA_TZ = ZoneInfo("Africa/Casablanca")
@@ -182,3 +179,4 @@ Use Google Search grounding to verify dates, sources, and positivity before incl
 
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": str(e)})
+
