@@ -1,0 +1,8 @@
+{
+  "builds": [
+    { "src": "api/news.py", "use": "@vercel/python" }
+  ],
+  "routes": [
+    { "src": "/(.*)", "dest": "api/news.py" }
+  ]
+}

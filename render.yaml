@@ -1,0 +1,7 @@
+services:
+  - type: web
+    name: veille
+    env: docker
+    plan: free
+    autoDeploy: true
+    dockerfilePath: ./Dockerfile

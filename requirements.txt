@@ -1,0 +1,8 @@
+python-dotenv
+beautifulsoup4
+requests
+fastapi
+httpx
+jsonschema
+uvicorn
+openai>=1.0.0
