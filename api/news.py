@@ -18,11 +18,7 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 CASABLANCA_TZ = ZoneInfo("Africa/Casablanca")
 NEWS_NUM = int(os.getenv("NEWS_ARTICLES_NUM", "5"))  # default to 5
 RECIPIENTS = os.getenv("NEWS_EMAIL_TO", "litnitimounsef@gmail.com")
-
-MAIL_API_URL = os.getenv(
-    "MAIL_API_URL",
-    "https://mail-api-mounsef.vercel.app/api/send-email"
-)
+MAIL_API_URL = os.getenv("MAIL_API_URL", "https://mail-api-mounsef.vercel.app/api/send-email")
 
 def today_str_in_casablanca() -> str:
     return dt.datetime.now(CASABLANCA_TZ).date().isoformat()
@@ -59,10 +55,8 @@ async def health_check():
 
 @app.get("/api/news")
 async def get_positive_news():
-    # Always compute "today" in Africa/Casablanca to match Morocco outlets
+    # "Today" in Morocco time
     today = today_str_in_casablanca()
-
-    # Clamp NEWS_NUM to a reasonable positive integer
     num = max(1, NEWS_NUM)
 
     prompt = f"""
@@ -72,11 +66,11 @@ sustainability, diplomacy, tourism, technology, healthcare, improvements).
 Exclude any articles with negative content (crime, accidents, conflict, disasters).
 
 For each article:
-- First, critically assess if the tone and content are strictly positive and contain none of the excluded topics.
-- Confirm it's Morocco-related, that the publication date is {today}, and fields are available.
+- Critically verify tone is strictly positive and none of the excluded topics appear.
+- Confirm Morocco relevance and publication date equals {today}.
 - Then extract the required fields.
 
-If fewer than {num} are found, broaden reputable Moroccan sources until you have exactly {num}.
+If fewer than {num} are found, expand to other reputable Moroccan sources until you have exactly {num}.
 
 Return ONLY a strict JSON array of exactly {num} objects (no extra text).
 Each object must include ALL fields (use null if unavailable), ordered newest → oldest:
@@ -93,39 +87,38 @@ STRICT RULES:
 - Output is ONLY the JSON array (no prose, no comments).
 - All items must be unique, Morocco-specific, strictly positive, and dated {today}.
 - Sort by most recent publication time first.
+Also prefer sources and results geo-relevant to Casablanca, Morocco.
 """
 
     try:
-        # Use Responses API + web search tool
-        # Docs: Tools → Web search (Responses API) and model page for gpt-4o-search-preview
-        # https://platform.openai.com/docs/guides/tools-web-search
-        # https://platform.openai.com/docs/models/gpt-4o-search-preview
+        # ✅ Use Responses API with the hosted Web Search tool
+        # Official docs show enabling tools via `tools=[{"type":"web_search"}]`
+        # Model must be a standard model that supports tools (e.g., gpt-4o or gpt-4o-mini)
         response = client.responses.create(
-        model="gpt-4o-search-preview",   # or "gpt-4o"
-        input=prompt,
-        tools=[{"type": "web_search"}],  # ✅ enable built-in web search tool
-        tool_choice="auto",              # (optional) let the model decide when to search
+            model="gpt-4o",            # or "gpt-4o-mini"
+            input=prompt,
+            tools=[{"type": "web_search"}],
+            tool_choice="auto",
         )
 
-        # Prefer the SDK helper:
+        # Prefer SDK helper, then fallback to manual extraction
         content_text = getattr(response, "output_text", None)
         if not content_text:
             parts = []
             for item in getattr(response, "output", []) or []:
                 if getattr(item, "type", None) == "message":
-                    for ct in item.content:
+                    for ct in getattr(item, "content", []) or []:
                         if getattr(ct, "type", None) == "output_text":
                             parts.append(ct.text)
             content_text = "".join(parts).strip() if parts else ""
         content_text = (content_text or "").strip()
 
-        # Try parsing strict JSON array; on failure, bubble a 502 with raw text for debugging
+        # Parse strict JSON array
         try:
             articles = json.loads(content_text)
             if not isinstance(articles, list):
                 raise ValueError("Model output is not a JSON array.")
         except Exception as e:
-            # Return raw model output so callers can inspect; also helpful for logs
             return JSONResponse(
                 status_code=502,
                 content={"error": "Invalid JSON from model", "raw": content_text, "detail": str(e)},
@@ -159,12 +152,11 @@ STRICT RULES:
         body.append("</table>")
         html_body = "\n".join(body)
 
-        # Fire and forget email (synchronous; keeps things simple)
+        # Send email report
         send_report_via_email(subject, html_body)
 
-        # Return the parsed JSON array back to caller
+        # Return JSON to client
         return JSONResponse(content=articles)
 
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": str(e)})
-
