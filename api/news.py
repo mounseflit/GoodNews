@@ -101,29 +101,22 @@ STRICT RULES:
         # https://platform.openai.com/docs/guides/tools-web-search
         # https://platform.openai.com/docs/models/gpt-4o-search-preview
         response = client.responses.create(
-            model="gpt-4o-search-preview",
-            input=prompt,  # Responses API prefers 'input' (messages also supported)
-            web_search_options={
-                "search_context_size": "high",  # low | medium | high
-                "user_location": {
-                    "type": "approximate",
-                    "approximate": {"country": "MA", "city": "Casablanca"}
-                },
-            },
+        model="gpt-4o-search-preview",   # or "gpt-4o"
+        input=prompt,
+        tools=[{"type": "web_search"}],  # ✅ enable built-in web search tool
+        tool_choice="auto",              # (optional) let the model decide when to search
         )
 
-        # Prefer SDK helper when available; otherwise fall back to first text segment
+        # Prefer the SDK helper:
         content_text = getattr(response, "output_text", None)
         if not content_text:
-            # fallback for older/edge SDKs
             parts = []
             for item in getattr(response, "output", []) or []:
-                if item.type == "message":
+                if getattr(item, "type", None) == "message":
                     for ct in item.content:
                         if getattr(ct, "type", None) == "output_text":
                             parts.append(ct.text)
             content_text = "".join(parts).strip() if parts else ""
-
         content_text = (content_text or "").strip()
 
         # Try parsing strict JSON array; on failure, bubble a 502 with raw text for debugging
@@ -174,3 +167,4 @@ STRICT RULES:
 
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": str(e)})
+
