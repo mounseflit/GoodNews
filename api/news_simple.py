@@ -1,152 +1,17 @@
 import os
 import datetime
-from fastapi import FastAPI, Query
+from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 from openai import OpenAI
 import requests
 from dotenv import load_dotenv
 import json
-import io
-from urllib.parse import urlparse
-from typing import List, Dict, Any
 
 # Load environment variables from .env file
 load_dotenv()
 
 app = FastAPI()
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-
-# Slider API Configuration
-SLIDER_API_BASE_URL = os.getenv("SLIDER_API_BASE_URL")
-SLIDER_API_USERNAME = os.getenv("SLIDER_API_USERNAME")
-SLIDER_API_PASSWORD = os.getenv("SLIDER_API_PASSWORD")
-
-
-class SliderAPIClient:
-    def __init__(self):
-        self.base_url = SLIDER_API_BASE_URL
-        self.username = SLIDER_API_USERNAME
-        self.password = SLIDER_API_PASSWORD
-        self.access_token = None
-    
-    def authenticate(self):
-        """Get access token from the slider API"""
-        if not self.base_url:
-            print("Warning: SLIDER_API_BASE_URL not configured")
-            return None
-            
-        login_url = f"{self.base_url}/api/backoffice/v1/auth/login-bo"
-        login_data = {
-            "username": self.username,
-            "password": self.password
-        }
-        
-        try:
-            response = requests.post(login_url, json=login_data, timeout=10)
-            if response.ok:
-                data = response.json()
-                if data.get("data", {}).get("access_token"):
-                    self.access_token = data["data"]["access_token"]
-                    print("Successfully authenticated with slider API")
-                    return self.access_token
-                else:
-                    print("Authentication failed: No access token in response")
-                    return None
-            else:
-                print(f"Authentication failed: {response.status_code} {response.text}")
-                return None
-        except Exception as e:
-            print(f"Error authenticating with slider API: {e}")
-            return None
-    
-    def download_image(self, image_url):
-        """Download image from URL and return as bytes"""
-        if not image_url:
-            return None
-            
-        try:
-            response = requests.get(image_url, timeout=10)
-            if response.ok:
-                return response.content
-            else:
-                print(f"Failed to download image from {image_url}")
-                return None
-        except Exception as e:
-            print(f"Error downloading image from {image_url}: {e}")
-            return None
-    
-    def create_slider(self, title, content, image_url=None, video_url=None):
-        """Create a slider using the external API"""
-        if not self.access_token:
-            if not self.authenticate():
-                return {"error": "Failed to authenticate with slider API"}
-        
-        slider_url = f"{self.base_url}/api/backoffice/v1/slider/creation-externe"
-        headers = {
-            "Authorization": f"Bearer {self.access_token}"
-        }
-        
-        # Prepare form data
-        data = {
-            "titre": title,
-            "contenu": content,
-            "video_url": video_url or ""
-        }
-        
-        files = {}
-        
-        # Download and include image if available
-        if image_url:
-            image_content = self.download_image(image_url)
-            if image_content:
-                # Get file extension from URL
-                parsed_url = urlparse(image_url)
-                file_extension = parsed_url.path.split('.')[-1] if '.' in parsed_url.path else 'jpg'
-                files["image"] = (f"news_image.{file_extension}", image_content, f"image/{file_extension}")
-        
-        try:
-            response = requests.post(slider_url, data=data, files=files, headers=headers, timeout=15)
-            if response.ok:
-                print(f"Successfully created slider: {title}")
-                return {"success": True, "data": response.json()}
-            else:
-                print(f"Failed to create slider: {response.status_code} {response.text}")
-                return {"error": f"Failed to create slider: {response.status_code}"}
-        except Exception as e:
-            print(f"Error creating slider: {e}")
-            return {"error": f"Error creating slider: {str(e)}"}
-
-
-def create_sliders_from_news(articles):
-    """Create sliders for each news article"""
-    if not SLIDER_API_BASE_URL:
-        print("Slider API not configured, skipping slider creation")
-        return {"message": "Slider API not configured"}
-    
-    slider_client = SliderAPIClient()
-    results = []
-    
-    for i, article in enumerate(articles, 1):
-        title = article.get('title', f'Good News #{i}')
-        content = article.get('summary', '') + "\n\n" + article.get('mini_article', '')
-        image_url = article.get('image')
-        
-        # Create slider
-        result = slider_client.create_slider(
-            title=title,
-            content=content,
-            image_url=image_url
-        )
-        
-        results.append({
-            "article_title": title,
-            "slider_creation": result
-        })
-    
-    return {
-        "message": f"Processed {len(articles)} articles",
-        "results": results
-    }
 
 
 
@@ -187,7 +52,7 @@ def send_report_via_email(subject: str, body: str) -> None:
 
 
 @app.get("/api/news")
-async def get_positive_news(create_sliders: bool = True):
+async def get_positive_news():
     today = datetime.date.today().isoformat()
     # Use recent date range to ensure we can find articles
     recent_date = (datetime.date.today() - datetime.timedelta(days=1)).isoformat()
@@ -285,21 +150,7 @@ async def get_positive_news(create_sliders: bool = True):
         
         send_report_via_email(subject, body)
 
-        # Create sliders from the news articles if requested
-        slider_results = None
-        if create_sliders:
-            slider_results = create_sliders_from_news(news_data)
-
-        response_data = {
-            "status": "success", 
-            "articles": news_data, 
-            "count": len(news_data)
-        }
-        
-        if slider_results:
-            response_data["sliders"] = slider_results
-            
-        return response_data
+        return {"status": "success", "articles": news_data, "count": len(news_data)}
     except Exception as e:
         return {"error": str(e)}
 
@@ -307,27 +158,3 @@ async def get_positive_news(create_sliders: bool = True):
 @app.get("/api/health")
 async def health_check():
     return {"status": "ok"}
-
-
-@app.post("/api/create-sliders")
-async def create_sliders_endpoint(articles: List[Dict[str, Any]]):
-    """
-    Endpoint to create sliders from provided articles
-    """
-    try:
-        slider_results = create_sliders_from_news(articles)
-        return {
-            "status": "success",
-            "message": "Sliders creation completed",
-            "results": slider_results
-        }
-    except Exception as e:
-        return {"error": str(e)}
-
-
-@app.get("/api/news-and-sliders")
-async def get_news_and_create_sliders():
-    """
-    Combined endpoint that fetches news and creates sliders
-    """
-    return await get_positive_news()

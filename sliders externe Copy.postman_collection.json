@@ -1,0 +1,149 @@
+{
+	"info": {
+		"_postman_id": "af79fcf1-5bf7-4c00-8a61-313a4a5b3412",
+		"name": "sliders externe Copy",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "43168628"
+	},
+	"item": [
+		{
+			"name": "creation sliders",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "formdata",
+					"formdata": [
+						{
+							"key": "image",
+							"type": "file",
+							"src": "/C:/Users/youne/Downloads/luk.png"
+						},
+						{
+							"key": "contenu",
+							"value": "zdhol",
+							"type": "text"
+						},
+						{
+							"key": "video_url",
+							"value": "azajbo",
+							"type": "text"
+						},
+						{
+							"key": "titre",
+							"value": "testing",
+							"type": "text"
+						}
+					]
+				},
+				"url": {
+					"raw": "{{base_url}}/api/backoffice/v1/slider/creation-externe",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"backoffice",
+						"v1",
+						"slider",
+						"creation-externe"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "login",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"// Parse the token from the response\r",
+							"let jsonData = pm.response.json();\r",
+							"\r",
+							"if (jsonData.data.access_token) {\r",
+							"    pm.collectionVariables.set(\"access_token\", jsonData.data.access_token);\r",
+							"    pm.collectionVariables.set(\"refresh_token\", jsonData.data.refresh_token);\r",
+							"    console.log(\"Access token saved to environment\");\r",
+							"} else {\r",
+							"    console.error(\"No access_token in response\");\r",
+							"}"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"username\": \"0678945612\",\r\n    \"password\": \"Secure@1234\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{base_url}}/api/backoffice/v1/auth/login-bo",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"backoffice",
+						"v1",
+						"auth",
+						"login-bo"
+					]
+				}
+			},
+			"response": []
+		}
+	],
+	"auth": {
+		"type": "bearer",
+		"bearer": [
+			{
+				"key": "token",
+				"value": "{{access_token}}",
+				"type": "string"
+			}
+		]
+	},
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "access_token",
+			"value": ""
+		},
+		{
+			"key": "refresh_token",
+			"value": ""
+		}
+	]
+}
