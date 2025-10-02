@@ -3,7 +3,7 @@ import requests
 import datetime
 
 def ping_backend():
-    url = "https://veille-demo.onrender.com/watch" #api
+    url = "/api/news-and-sliders" #api
     
     try:
         print(f"{datetime.datetime.now()}: Pinging {url}")
